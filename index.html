@@ -1,149 +1,117 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>DigiDollar Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f5f5f5;
-      padding: 30px;
-    }
-    .container {
-      background: #fff;
-      padding: 20px;
-      border-radius: 12px;
-      max-width: 400px;
-      margin: auto;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    button {
-      background: #28a745;
-      color: white;
-      border: none;
-      padding: 10px;
-      margin-top: 10px;
-      width: 100%;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    input {
-      width: 100%;
-      padding: 8px;
-      margin: 5px 0;
-    }
-    h2 {
-      text-align: center;
-    }
-  </style>
+    <title>DigiDollar Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        body { font-family: Arial; background: #f4f4f4; padding: 2rem; }
+        #dashboard { max-width: 400px; margin: auto; background: #fff; padding: 1rem; border-radius: 10px; }
+        input, button { width: 100%; margin: 0.5rem 0; padding: 0.5rem; border-radius: 5px; }
+        button { background-color: #28a745; color: white; border: none; }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h2>DigiDollar Dashboard</h2>
-    <button onclick="connectWallet()">Connect Wallet</button>
-    <p><strong>Your Wallet:</strong> <span id="wallet">Not connected</span></p>
-    <p><strong>Your DUSD Balance:</strong> <span id="balance">--</span></p>
-    <p><strong>USD Value:</strong> <span id="usdValue">--</span></p>
+    <div id="dashboard">
+        <h2>DigiDollar Dashboard</h2>
+        <button onclick="connect()">Connect Wallet</button>
+        <p><b>Your Wallet:</b> <span id="wallet">Not connected</span></p>
+        <p><b>Your DUSD Balance:</b> <span id="balance">--</span></p>
+        <p><b>USD Value:</b> <span id="usdValue">--</span></p>
 
-    <h3>Mint Tokens (Owner Only)</h3>
-    <input id="mintTo" placeholder="Recipient Address" />
-    <input id="mintAmount" type="number" placeholder="Amount (whole DUSD)" />
-    <button onclick="mint()">Mint</button>
+        <h3>Mint Tokens (Owner Only)</h3>
+        <input type="text" id="mintTo" placeholder="Recipient Address" />
+        <input type="number" id="mintAmount" placeholder="Amount (whole DUSD)" />
+        <button onclick="mint()">Mint</button>
 
-    <h3>Send DUSD</h3>
-    <input id="sendTo" placeholder="Recipient Address" />
-    <input id="sendAmount" type="number" placeholder="Amount (whole DUSD)" />
-    <button onclick="send()">Send</button>
+        <h3>Send DUSD</h3>
+        <input type="text" id="sendTo" placeholder="Recipient Address" />
+        <input type="number" id="sendAmount" placeholder="Amount (whole DUSD)" />
+        <button onclick="send()">Send</button>
 
-    <h3>Swap DUSD for ETH</h3>
-    <input id="swapAmount" type="number" placeholder="Amount of DUSD" />
-    <button onclick="swap()">Swap for ETH</button>
-  </div>
+        <h3>Swap DUSD for ETH</h3>
+        <input type="number" id="swapAmount" placeholder="Amount of DUSD" />
+        <button onclick="swap()">Swap for ETH</button>
+    </div>
 
-  <script>
-    const contractAddress = "0xECf7B7BA8768f07993c8CEf0b3dB6d7D5ad380ae";
-    const abi = [
-      "function transfer(address to, uint256 value) public returns (bool)",
-      "function balanceOf(address owner) view returns (uint256)",
-      "function mint(address to, uint256 amount) public",
-      "function getUSDValue(uint256 tokenAmount) public view returns (uint256)",
-      "function swapDUSDForETH(uint256 amount) public"
-    ];
+    <script>
+        const contractAddress = "0xECf7B7BA8768f07993c8CEf0b3dB6d7D5ad380ae";
+        const abi = [
+            "function balanceOf(address) view returns (uint256)",
+            "function mint(address to, uint256 amount) public",
+            "function transfer(address to, uint256 amount) public returns (bool)",
+            "function getUSDValue(uint256 tokenAmount) public view returns (uint256)",
+            "function swapDUSDForETH(uint256 amount) public",
+            "event Transfer(address indexed from, address indexed to, uint256 value)"
+        ];
 
-    let provider, signer, contract;
+        let provider, signer, contract;
 
-    async function connectWallet() {
-      try {
-        if (!window.ethereum) {
-          alert("Please install MetaMask!");
-          return;
+        async function connect() {
+            if (typeof window.ethereum !== "undefined") {
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                await provider.send("eth_requestAccounts", []);
+                signer = provider.getSigner();
+                const address = await signer.getAddress();
+                document.getElementById("wallet").innerText = address;
+                contract = new ethers.Contract(contractAddress, abi, signer);
+                loadBalance();
+            } else {
+                alert("MetaMask is not installed.");
+            }
         }
 
-        await window.ethereum.request({ method: "eth_requestAccounts" });
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        signer = provider.getSigner();
-        const address = await signer.getAddress();
+        async function loadBalance() {
+            try {
+                const address = await signer.getAddress();
+                const balance = await contract.balanceOf(address);
+                const usdValue = await contract.getUSDValue(balance);
+                document.getElementById("balance").innerText = ethers.utils.formatUnits(balance, 18);
+                document.getElementById("usdValue").innerText = "$" + ethers.utils.formatUnits(usdValue, 18);
+            } catch (err) {
+                console.error("Load balance error:", err);
+            }
+        }
 
-        document.getElementById("wallet").textContent = address;
-        contract = new ethers.Contract(contractAddress, abi, signer);
-        loadBalance();
-      } catch (err) {
-        console.error(err);
-        alert("Failed to connect wallet.");
-      }
-    }
+        async function mint() {
+            try {
+                const to = document.getElementById("mintTo").value;
+                const amount = ethers.utils.parseUnits(document.getElementById("mintAmount").value, 18);
+                const tx = await contract.mint(to, amount);
+                await tx.wait();
+                alert("Mint complete!");
+                loadBalance();
+            } catch (err) {
+                console.error("Mint failed:", err);
+                alert("Mint failed. See console.");
+            }
+        }
 
-    async function loadBalance() {
-      const address = await signer.getAddress();
-      const balance = await contract.balanceOf(address);
-      const dusd = ethers.utils.formatUnits(balance, 18);
-      document.getElementById("balance").textContent = `${dusd} DUSD`;
+        async function send() {
+            try {
+                const to = document.getElementById("sendTo").value;
+                const amount = ethers.utils.parseUnits(document.getElementById("sendAmount").value, 18);
+                const tx = await contract.transfer(to, amount);
+                await tx.wait();
+                alert("Send complete!");
+                loadBalance();
+            } catch (err) {
+                console.error("Send failed:", err);
+                alert("Send failed. See console.");
+            }
+        }
 
-      const usdValue = await contract.getUSDValue(balance);
-      document.getElementById("usdValue").textContent = `$${ethers.utils.formatUnits(usdValue, 18)}`;
-    }
-
-    async function mint() {
-      try {
-        const to = document.getElementById("mintTo").value;
-        const amount = ethers.utils.parseUnits(document.getElementById("mintAmount").value, 18);
-        const tx = await contract.mint(to, amount);
-        await tx.wait();
-        alert("Minted successfully!");
-        loadBalance();
-      } catch (err) {
-        console.error(err);
-        alert("Minting failed.");
-      }
-    }
-
-    async function send() {
-      try {
-        const to = document.getElementById("sendTo").value;
-        const amount = ethers.utils.parseUnits(document.getElementById("sendAmount").value, 18);
-        const tx = await contract.transfer(to, amount);
-        await tx.wait();
-        alert("Sent successfully!");
-        loadBalance();
-      } catch (err) {
-        console.error(err);
-        alert("Sending failed.");
-      }
-    }
-
-    async function swap() {
-      try {
-        const amount = ethers.utils.parseUnits(document.getElementById("swapAmount").value, 18);
-        const tx = await contract.swapDUSDForETH(amount);
-        await tx.wait();
-        alert("Swap complete!");
-        loadBalance();
-      } catch (err) {
-        console.error(err);
-        alert("Swap failed.");
-      }
-    }
-  </script>
+        async function swap() {
+            try {
+                const amount = ethers.utils.parseUnits(document.getElementById("swapAmount").value, 18);
+                const tx = await contract.swapDUSDForETH(amount);
+                await tx.wait();
+                alert("Swap complete!");
+                loadBalance();
+            } catch (err) {
+                console.error("Swap failed:", err);
+                alert("Swap failed. See console.");
+            }
+        }
+    </script>
 </body>
 </html>
-
