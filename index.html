@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>DigiDollar Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f1f1f1;
+      padding: 20px;
+    }
+    .container {
+      max-width: 500px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      color: #444;
+    }
+    input, button {
+      padding: 10px;
+      margin: 8px 0;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .label {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>DigiDollar Dashboard</h2>
+    <button onclick="connectWallet()">Connect Wallet</button>
+    <p><span class="label">Your Wallet:</span> <span id="wallet">Not connected</span></p>
+    <p><span class="label">Your DUSD Balance:</span> <span id="balance">--</span></p>
+    <p><span class="label">USD Value:</span> <span id="usdValue">--</span></p>
+
+    <h3>Mint Tokens (Owner Only)</h3>
+    <input type="text" id="mintTo" placeholder="Recipient Address">
+    <input type="text" id="mintAmount" placeholder="Amount (whole DUSD)">
+    <button onclick="mint()">Mint</button>
+
+    <h3>Send DUSD</h3>
+    <input type="text" id="sendTo" placeholder="Recipient Address">
+    <input type="text" id="sendAmount" placeholder="Amount (whole DUSD)">
+    <button onclick="send()">Send</button>
+  </div>
+
+  <script>
+    const contractAddress = "0x42102eED05526A704036Fa1B5064EFB0049D4426"; // Your DigiDollar contract
+
+    const abi = [
+      "function balanceOf(address) view returns (uint256)",
+      "function transfer(address to, uint amount) returns (bool)",
+      "function mint(address to, uint256 amount)",
+      "function getUSDValue(uint256 tokenAmount) public view returns (uint256)"
+    ];
+
+    let provider, signer, contract;
+
+    async function connectWallet() {
+      if (typeof window.ethereum !== 'undefined') {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        const address = await signer.getAddress();
+        document.getElementById("wallet").textContent = address;
+
+        contract = new ethers.Contract(contractAddress, abi, signer);
+        loadBalance();
+      } else {
+        alert("Please install MetaMask!");
+      }
+    }
+
+    async function loadBalance() {
+      const address = await signer.getAddress();
+      const balance = await contract.balanceOf(address);
+      document.getElementById("balance").textContent = ethers.utils.formatUnits(balance, 18) + " DUSD";
+
+      const usdValue = await contract.getUSDValue(balance);
+      document.getElementById("usdValue").textContent = "$" + usdValue.toString();
+    }
+
+    async function mint() {
+      const to = document.getElementById("mintTo").value;
+      const amount = ethers.utils.parseUnits(document.getElementById("mintAmount").value, 18);
+      const tx = await contract.mint(to, amount);
+      await tx.wait();
+      alert("Minted successfully!");
+      loadBalance();
+    }
+
+    async function send() {
+      const to = document.getElementById("sendTo").value;
+      const amount = ethers.utils.parseUnits(document.getElementById("sendAmount").value, 18);
+      const tx = await contract.transfer(to, amount);
+      await tx.wait();
+      alert("Sent successfully!");
+      loadBalance();
+    }
+  </script>
+</body>
+</html>
