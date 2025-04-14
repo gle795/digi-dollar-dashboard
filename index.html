@@ -6,13 +6,24 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      text-align: center;
+      background-color: #f5f5f5;
       margin-top: 50px;
     }
+    .container {
+      background-color: white;
+      padding: 30px;
+      width: 400px;
+      margin: auto;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.15);
+    }
     input, button {
-      margin: 5px;
+      width: 90%;
       padding: 10px;
-      width: 250px;
+      margin: 5px auto;
+      display: block;
+      border-radius: 5px;
+      border: 1px solid #ccc;
     }
     button {
       background-color: #4CAF50;
@@ -23,20 +34,17 @@
     button:hover {
       background-color: #45a049;
     }
-    .container {
-      background: #f9f9f9;
-      padding: 20px;
-      margin: auto;
-      width: 400px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    h2 {
+      color: #333;
+    }
+    p {
+      margin: 10px 0;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>DigiDollar Dashboard</h2>
-
     <button onclick="connect()">Connect Wallet</button>
 
     <p><strong>Your Wallet:</strong> <span id="wallet">Not connected</span></p>
@@ -44,29 +52,28 @@
     <p><strong>USD Value:</strong> <span id="usdvalue">--</span></p>
 
     <h3>Mint Tokens (Owner Only)</h3>
-    <input type="text" id="mintTo" placeholder="Recipient Address"><br>
-    <input type="number" id="mintAmount" placeholder="Amount (whole DUSD)"><br>
+    <input type="text" id="mintTo" placeholder="Recipient Address">
+    <input type="number" id="mintAmount" placeholder="Amount (whole DUSD)">
     <button onclick="mint()">Mint</button>
 
     <h3>Send DUSD</h3>
-    <input type="text" id="sendTo" placeholder="Recipient Address"><br>
-    <input type="number" id="sendAmount" placeholder="Amount (whole DUSD)"><br>
+    <input type="text" id="sendTo" placeholder="Recipient Address">
+    <input type="number" id="sendAmount" placeholder="Amount (whole DUSD)">
     <button onclick="send()">Send</button>
 
-    <!-- ✅ NEW: Swap DUSD for ETH -->
     <h3>Swap DUSD for ETH</h3>
-    <input type="number" id="swapAmount" placeholder="Amount of DUSD"><br>
+    <input type="number" id="swapAmount" placeholder="Amount of DUSD">
     <button onclick="swap()">Swap for ETH</button>
   </div>
 
   <script>
-    const contractAddress = "0xECf7B7BA8768f07993c8CEf0b3dB6d7D5ad380ae"; // Your latest contract
+    const contractAddress = "0xECf7B7BA8768f07993c8CEf0b3dB6d7D5ad380ae"; // your updated contract address
     const abi = [
       "function balanceOf(address) view returns (uint256)",
       "function transfer(address to, uint256 value) public returns (bool)",
       "function mint(address to, uint256 amount)",
       "function getUSDValue(uint256 tokenAmount) public view returns (uint256)",
-      "function swapDUSDForETH(uint256 amount) public",
+      "function swapDUSDForETH(uint256 amount) public"
     ];
 
     let provider, signer, contract;
@@ -112,7 +119,6 @@
       loadBalance();
     }
 
-    // ✅ NEW: Swap DUSD for ETH
     async function swap() {
       const amount = ethers.utils.parseUnits(document.getElementById("swapAmount").value, 18);
       const tx = await contract.swapDUSDForETH(amount);
@@ -123,3 +129,4 @@
   </script>
 </body>
 </html>
+
