@@ -1,34 +1,52 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>DigiDollar Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f1f1f1;
-      padding: 20px;
+      background: #f0f0f0;
+      display: flex;
+      justify-content: center;
+      padding-top: 50px;
     }
     .container {
-      max-width: 500px;
-      margin: auto;
       background: white;
       padding: 30px;
       border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      width: 400px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
     }
     h2 {
-      color: #444;
+      text-align: center;
+      color: #333;
     }
-    input, button {
-      padding: 10px;
-      margin: 8px 0;
+    input {
       width: 100%;
-      box-sizing: border-box;
+      padding: 10px;
+      margin-top: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 15px;
+      background: #4CAF50;
+      border: none;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #45a049;
     }
     .label {
       font-weight: bold;
+      margin-top: 10px;
     }
   </style>
 </head>
@@ -36,41 +54,116 @@
   <div class="container">
     <h2>DigiDollar Dashboard</h2>
     <button onclick="connectWallet()">Connect Wallet</button>
-    <p><span class="label">Your Wallet:</span> <span id="wallet">Not connected</span></p>
-    <p><span class="label">Your DUSD Balance:</span> <span id="balance">--</span></p>
-    <p><span class="label">USD Value:</span> <span id="usdValue">--</span></p>
+    <p><strong>Your Wallet:</strong> <span id="wallet">Not connected</span></p>
+    <p><strong>Your DUSD Balance:</strong> <span id="balance">--</span></p>
+    <p><strong>USD Value:</strong> <span id="usdValue">--</span></p>
 
-    <h3>Mint Tokens (Owner Only)</h3>
-    <input type="text" id="mintTo" placeholder="Recipient Address">
-    <input type="text" id="mintAmount" placeholder="Amount (whole DUSD)">
+    <div class="label">Mint Tokens (Owner Only)</div>
+    <input id="mintTo" placeholder="Recipient Address" />
+    <input id="mintAmount" placeholder="Amount (whole DUSD)" />
     <button onclick="mint()">Mint</button>
 
-    <h3>Send DUSD</h3>
-    <input type="text" id="sendTo" placeholder="Recipient Address">
-    <input type="text" id="sendAmount" placeholder="Amount (whole DUSD)">
+    <div class="label">Send DUSD</div>
+    <input id="sendTo" placeholder="Recipient Address" />
+    <input id="sendAmount" placeholder="Amount (whole DUSD)" />
     <button onclick="send()">Send</button>
   </div>
 
   <script>
-    const contractAddress = "0x42102eED05526A704036Fa1B5064EFB0049D4426"; // Your DigiDollar contract
-
+    const contractAddress = "0x42102eED05526A704036Fa1B5064EFB0049D4426";
     const abi = [
-      "function balanceOf(address) view returns (uint256)",
-      "function transfer(address to, uint amount) returns (bool)",
-      "function mint(address to, uint256 amount)",
-      "function getUSDValue(uint256 tokenAmount) public view returns (uint256)"
+      {
+        "inputs": [],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "inputs": [],
+        "name": "balanceOf",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          }
+        ],
+        "name": "transfer",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "mint",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "tokenAmount",
+            "type": "uint256"
+          }
+        ],
+        "name": "getUSDValue",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      }
     ];
 
-    let provider, signer, contract;
+    let provider;
+    let signer;
+    let contract;
 
     async function connectWallet() {
-      if (typeof window.ethereum !== 'undefined') {
+      if (window.ethereum) {
         provider = new ethers.providers.Web3Provider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         signer = provider.getSigner();
         const address = await signer.getAddress();
         document.getElementById("wallet").textContent = address;
-
         contract = new ethers.Contract(contractAddress, abi, signer);
         loadBalance();
       } else {
@@ -80,11 +173,17 @@
 
     async function loadBalance() {
       const address = await signer.getAddress();
-      const balance = await contract.balanceOf(address);
-      document.getElementById("balance").textContent = ethers.utils.formatUnits(balance, 18) + " DUSD";
+      const balance = await contract.balanceOf();
+      const formatted = ethers.utils.formatUnits(balance, 18);
+      document.getElementById("balance").textContent = formatted + " DUSD";
 
-      const usdValue = await contract.getUSDValue(balance);
-      document.getElementById("usdValue").textContent = "$" + usdValue.toString();
+      try {
+        const usdValue = await contract.getUSDValue(balance);
+        const formattedUSD = (usdValue / 100000000).toFixed(2); // Adjusting for 8 decimals
+        document.getElementById("usdValue").textContent = "$" + formattedUSD;
+      } catch (e) {
+        document.getElementById("usdValue").textContent = "N/A";
+      }
     }
 
     async function mint() {
