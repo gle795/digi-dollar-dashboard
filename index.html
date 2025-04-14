@@ -6,7 +6,7 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #f8f9fa;
+      background-color: #f2f2f2;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -14,10 +14,10 @@
     }
 
     .container {
-      background-color: white;
+      background: #fff;
       padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.15);
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
       width: 100%;
       max-width: 400px;
     }
@@ -44,14 +44,20 @@
 
     h2 {
       text-align: center;
+      margin-bottom: 20px;
     }
 
     .info {
-      margin: 10px 0;
+      margin-bottom: 15px;
     }
 
-    .label {
-      font-weight: bold;
+    .info span {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    h3 {
+      margin-top: 20px;
     }
   </style>
 </head>
@@ -60,9 +66,9 @@
     <h2>DigiDollar Dashboard</h2>
     <button onclick="connectWallet()">Connect Wallet</button>
     <div class="info">
-      <div class="label">Your Wallet:</div> <span id="wallet">Not connected</span><br>
-      <div class="label">Your DUSD Balance:</div> <span id="balance">--</span><br>
-      <div class="label">USD Value:</div> <span id="usdValue">--</span>
+      <span><strong>Your Wallet:</strong> <span id="wallet">Not connected</span></span>
+      <span><strong>Your DUSD Balance:</strong> <span id="balance">--</span></span>
+      <span><strong>USD Value:</strong> <span id="usdValue">--</span></span>
     </div>
 
     <h3>Mint Tokens (Owner Only)</h3>
@@ -81,13 +87,13 @@
   </div>
 
   <script>
-    const contractAddress = "YOUR_CONTRACT_ADDRESS_HERE"; // REPLACE WITH YOUR CONTRACT ADDRESS
+    const contractAddress = "0xECf7B7BA8768f07993c8CEf0b3dB6d7D5ad380ae";
     const abi = [
       "function balanceOf(address) view returns (uint256)",
       "function transfer(address to, uint256 value) returns (bool)",
       "function mint(address to, uint256 value)",
       "function getUSDValue(uint256 tokenAmount) view returns (uint256)",
-      "function swapDUSDForETH(uint256 amount) public",
+      "function swapDUSDForETH(uint256 amount)",
       "function owner() view returns (address)"
     ];
 
@@ -97,8 +103,8 @@
 
     async function connectWallet() {
       try {
-        if (typeof window.ethereum !== "undefined") {
-          await window.ethereum.request({ method: "eth_requestAccounts" });
+        if (window.ethereum) {
+          await ethereum.request({ method: "eth_requestAccounts" });
           provider = new ethers.providers.Web3Provider(window.ethereum);
           signer = provider.getSigner();
           const address = await signer.getAddress();
@@ -106,11 +112,11 @@
           contract = new ethers.Contract(contractAddress, abi, signer);
           loadBalance();
         } else {
-          alert("MetaMask not found. Please install MetaMask!");
+          alert("MetaMask not found.");
         }
-      } catch (err) {
-        console.error(err);
-        alert("Connection failed.");
+      } catch (error) {
+        console.error(error);
+        alert("Failed to connect wallet.");
       }
     }
 
@@ -120,10 +126,10 @@
         const balance = await contract.balanceOf(address);
         document.getElementById("balance").innerText = ethers.utils.formatUnits(balance, 18) + " DUSD";
 
-        const usdValue = await contract.getUSDValue(balance);
-        document.getElementById("usdValue").innerText = "$" + ethers.utils.formatUnits(usdValue, 18);
-      } catch (err) {
-        console.error(err);
+        const usd = await contract.getUSDValue(balance);
+        document.getElementById("usdValue").innerText = "$" + ethers.utils.formatUnits(usd, 18);
+      } catch (error) {
+        console.error(error);
       }
     }
 
@@ -135,9 +141,9 @@
         await tx.wait();
         alert("Minted successfully!");
         loadBalance();
-      } catch (err) {
-        console.error(err);
-        alert("Mint failed.");
+      } catch (error) {
+        console.error(error);
+        alert("Mint failed. Are you the contract owner?");
       }
     }
 
@@ -149,8 +155,8 @@
         await tx.wait();
         alert("Sent successfully!");
         loadBalance();
-      } catch (err) {
-        console.error(err);
+      } catch (error) {
+        console.error(error);
         alert("Send failed.");
       }
     }
@@ -160,11 +166,11 @@
         const amount = ethers.utils.parseUnits(document.getElementById("swapAmount").value, 18);
         const tx = await contract.swapDUSDForETH(amount);
         await tx.wait();
-        alert("Swap complete!");
+        alert("Swapped successfully!");
         loadBalance();
-      } catch (err) {
-        console.error(err);
-        alert("Swap failed.");
+      } catch (error) {
+        console.error(error);
+        alert("Swap failed. Ensure the contract has ETH to return.");
       }
     }
   </script>
