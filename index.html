@@ -1,32 +1,132 @@
-const contractAddress = "0xce25e5AC641283fBC5ce6b317c196AD676f1f28E";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DigiDollar Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <style>
+    body { font-family: Arial; background: #f4f4f4; padding: 20px; }
+    .box { background: white; padding: 20px; border-radius: 8px; max-width: 500px; margin: auto; }
+    button { padding: 10px 20px; background: green; color: white; border: none; border-radius: 5px; }
+    input { padding: 10px; width: 100%; margin: 5px 0; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>DigiDollar Dashboard</h2>
+    <button onclick="connectWallet()">Connect Wallet</button>
+    <p>Your Wallet: <span id="wallet">Not connected</span></p>
+    <p>Your ELD Balance: <span id="dusdBalance">--</span></p>
 
-const contractABI = [
-  {
-    "inputs": [{"internalType": "address","name": "spender","type": "address"}, {"internalType": "uint256","name": "amount","type": "uint256"}],
-    "name": "approve",
-    "outputs": [{"internalType": "bool","name": "","type": "bool"}],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [{"internalType": "uint256","name": "amount","type": "uint256"}],
-    "name": "swapELDForETH",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [{"internalType": "address","name": "to","type": "address"}, {"internalType": "uint256","name": "amount","type": "uint256"}],
-    "name": "transfer",
-    "outputs": [{"internalType": "bool","name": "","type": "bool"}],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [{"internalType": "address","name": "owner","type": "address"}],
-    "name": "balanceOf",
-    "outputs": [{"internalType": "uint256","name": "","type": "uint256"}],
-    "stateMutability": "view",
-    "type": "function"
-  }
-];
+    <h3>Mint Tokens (Owner Only)</h3>
+    <input id="mintAddress" placeholder="Recipient Address" />
+    <input id="mintAmount" placeholder="Amount (whole ELD)" />
+    <button onclick="mint()">Mint</button>
+
+    <h3>Send ELD</h3>
+    <input id="sendAddress" placeholder="Recipient Address" />
+    <input id="sendAmount" placeholder="Amount (whole ELD)" />
+    <button onclick="send()">Send</button>
+
+    <h3>Swap ELD for ETH</h3>
+    <input id="swapAmount" placeholder="Amount of ELD" />
+    <button onclick="swap()">Swap for ETH</button>
+  </div>
+
+  <script>
+    const contractAddress = "0xce25e5AC641283fBC5ce6b317c196AD676f1f28E";
+    const contractABI = [
+      {
+        "inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],
+        "name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],
+        "stateMutability":"nonpayable","type":"function"
+      },
+      {
+        "inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],
+        "name":"swapELDForETH","outputs":[],"stateMutability":"nonpayable","type":"function"
+      },
+      {
+        "inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],
+        "name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],
+        "stateMutability":"nonpayable","type":"function"
+      },
+      {
+        "inputs":[{"internalType":"address","name":"owner","type":"address"}],
+        "name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],
+        "stateMutability":"view","type":"function"
+      },
+      {
+        "inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],
+        "name":"mint","outputs":[],"stateMutability":"nonpayable","type":"function"
+      }
+    ];
+
+    let provider, signer, contract;
+
+    async function connectWallet() {
+      try {
+        if (!window.ethereum) throw new Error("Install MetaMask");
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        contract = new ethers.Contract(contractAddress, contractABI, signer);
+
+        const address = await signer.getAddress();
+        document.getElementById("wallet").innerText = address;
+        loadBalance();
+      } catch (err) {
+        console.error(err);
+        alert("Failed to connect wallet.");
+      }
+    }
+
+    async function loadBalance() {
+      const address = await signer.getAddress();
+      const balance = await contract.balanceOf(address);
+      document.getElementById("dusdBalance").innerText = ethers.utils.formatEther(balance) + " ELD";
+    }
+
+    async function mint() {
+      try {
+        const to = document.getElementById("mintAddress").value;
+        const amount = ethers.utils.parseEther(document.getElementById("mintAmount").value);
+        const tx = await contract.mint(to, amount);
+        await tx.wait();
+        alert("Mint complete!");
+        loadBalance();
+      } catch (err) {
+        console.error(err);
+        alert("Mint failed.");
+      }
+    }
+
+    async function send() {
+      try {
+        const to = document.getElementById("sendAddress").value;
+        const amount = ethers.utils.parseEther(document.getElementById("sendAmount").value);
+        const tx = await contract.transfer(to, amount);
+        await tx.wait();
+        alert("Transfer complete!");
+        loadBalance();
+      } catch (err) {
+        console.error(err);
+        alert("Send failed.");
+      }
+    }
+
+    async function swap() {
+      try {
+        const amount = ethers.utils.parseEther(document.getElementById("swapAmount").value);
+        const tx = await contract.swapELDForETH(amount);
+        await tx.wait();
+        alert("Swap complete!");
+        loadBalance();
+      } catch (err) {
+        console.error(err);
+        alert("Swap failed.");
+      }
+    }
+  </script>
+</body>
+</html>
