@@ -1,146 +1,32 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>DigiDollar Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f9f9f9;
-      display: flex;
-      justify-content: center;
-      padding: 40px;
-    }
-    .container {
-      background: white;
-      border-radius: 10px;
-      padding: 30px;
-      max-width: 400px;
-      width: 100%;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-    button {
-      background-color: #28a745;
-      border: none;
-      color: white;
-      padding: 10px;
-      margin-top: 10px;
-      width: 100%;
-      cursor: pointer;
-      border-radius: 4px;
-    }
-    input {
-      width: 100%;
-      padding: 10px;
-      margin-top: 5px;
-      margin-bottom: 10px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h2>DigiDollar Dashboard</h2>
-    <button onclick="connectWallet()">Connect Wallet</button>
-    <p><strong>Your Wallet:</strong> <span id="wallet">Not connected</span></p>
-    <p><strong>Your DUSD Balance:</strong> <span id="balance">--</span></p>
-    <p><strong>USD Value:</strong> <span id="usdValue">--</span></p>
+const contractAddress = "0xce25e5AC641283fBC5ce6b317c196AD676f1f28E";
 
-    <h3>Mint Tokens (Owner Only)</h3>
-    <input type="text" id="mintTo" placeholder="Recipient Address">
-    <input type="number" id="mintAmount" placeholder="Amount (whole DUSD)">
-    <button onclick="mintTokens()">Mint</button>
-
-    <h3>Send DUSD</h3>
-    <input type="text" id="sendTo" placeholder="Recipient Address">
-    <input type="number" id="sendAmount" placeholder="Amount (whole DUSD)">
-    <button onclick="sendDUSD()">Send</button>
-
-    <h3>Swap DUSD for ETH</h3>
-    <input type="number" id="swapAmount" placeholder="Amount of DUSD">
-    <button onclick="swap()">Swap for ETH</button>
-  </div>
-
-  <script>
-    let provider, signer, contract;
-    const contractAddress = "0xECf7B7BA8768f07993c8CEf0b3dB6d7D5ad380ae";
-    const contractABI = [
-      "function transfer(address to, uint256 value) public returns (bool)",
-      "function balanceOf(address owner) public view returns (uint256)",
-      "function mint(address to, uint256 amount) public",
-      "function getUSDValue(uint256 tokenAmount) public view returns (uint256)",
-      "function swapDUSDForETH(uint256 amount) public"
-    ];
-
-    async function connectWallet() {
-      try {
-        await window.ethereum.request({ method: "eth_requestAccounts" });
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        signer = provider.getSigner();
-        contract = new ethers.Contract(contractAddress, contractABI, signer);
-
-        const address = await signer.getAddress();
-        document.getElementById("wallet").innerText = address;
-        loadBalance();
-      } catch (err) {
-        alert("Failed to connect wallet.");
-        console.error(err);
-      }
-    }
-
-    async function loadBalance() {
-      try {
-        const address = await signer.getAddress();
-        const balance = await contract.balanceOf(address);
-        const usd = await contract.getUSDValue(balance);
-        document.getElementById("balance").innerText = `${ethers.utils.formatUnits(balance, 18)} DUSD`;
-        document.getElementById("usdValue").innerText = `$${ethers.utils.formatUnits(usd, 18)}`;
-      } catch (err) {
-        console.error("Balance error:", err);
-      }
-    }
-
-    async function mintTokens() {
-      try {
-        const to = document.getElementById("mintTo").value;
-        const amount = ethers.utils.parseUnits(document.getElementById("mintAmount").value, 18);
-        const tx = await contract.mint(to, amount);
-        await tx.wait();
-        alert("Mint complete!");
-        loadBalance();
-      } catch (err) {
-        alert("Mint failed. See console.");
-        console.error("Mint error:", err);
-      }
-    }
-
-    async function sendDUSD() {
-      try {
-        const to = document.getElementById("sendTo").value;
-        const amount = ethers.utils.parseUnits(document.getElementById("sendAmount").value, 18);
-        const tx = await contract.transfer(to, amount);
-        await tx.wait();
-        alert("Send complete!");
-        loadBalance();
-      } catch (err) {
-        alert("Send failed. See console.");
-        console.error("Send error:", err);
-      }
-    }
-
-    async function swap() {
-      try {
-        const amount = ethers.utils.parseUnits(document.getElementById("swapAmount").value, 18);
-        const tx = await contract.swapDUSDForETH(amount);
-        await tx.wait();
-        alert("Swap complete!");
-        loadBalance();
-      } catch (err) {
-        alert("Swap failed. See console.");
-        console.error("Swap error:", err);
-      }
-    }
-  </script>
-</body>
-</html>
+const contractABI = [
+  {
+    "inputs": [{"internalType": "address","name": "spender","type": "address"}, {"internalType": "uint256","name": "amount","type": "uint256"}],
+    "name": "approve",
+    "outputs": [{"internalType": "bool","name": "","type": "bool"}],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "uint256","name": "amount","type": "uint256"}],
+    "name": "swapELDForETH",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "address","name": "to","type": "address"}, {"internalType": "uint256","name": "amount","type": "uint256"}],
+    "name": "transfer",
+    "outputs": [{"internalType": "bool","name": "","type": "bool"}],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "address","name": "owner","type": "address"}],
+    "name": "balanceOf",
+    "outputs": [{"internalType": "uint256","name": "","type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  }
+];
