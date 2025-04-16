@@ -1,132 +1,174 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>DigiDollar Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <title>GoldLink Dollar Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
   <style>
-    body { font-family: Arial; background: #f4f4f4; padding: 20px; }
-    .box { background: white; padding: 20px; border-radius: 8px; max-width: 500px; margin: auto; }
-    button { padding: 10px 20px; background: green; color: white; border: none; border-radius: 5px; }
-    input { padding: 10px; width: 100%; margin: 5px 0; }
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 50px;
+      background: #f8f8f8;
+    }
+    .container {
+      display: inline-block;
+      padding: 30px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    }
+    input {
+      padding: 8px;
+      margin: 8px;
+      width: 250px;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      background-color: #27ae60;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #219150;
+    }
   </style>
 </head>
 <body>
-  <div class="box">
-    <h2>DigiDollar Dashboard</h2>
+  <div class="container">
+    <h2>GoldLink Dollar (ELD) Dashboard</h2>
     <button onclick="connectWallet()">Connect Wallet</button>
     <p>Your Wallet: <span id="wallet">Not connected</span></p>
-    <p>Your ELD Balance: <span id="dusdBalance">--</span></p>
+    <p>Your ELD Balance: <span id="eldBalance">--</span></p>
+    <p>Your ETH Balance: <span id="ethBalance">--</span></p>
 
-    <h3>Mint Tokens (Owner Only)</h3>
-    <input id="mintAddress" placeholder="Recipient Address" />
-    <input id="mintAmount" placeholder="Amount (whole ELD)" />
+    <h3>Mint ELD (Owner Only)</h3>
+    <input type="text" id="mintTo" placeholder="Recipient Address" />
+    <input type="number" id="mintAmount" placeholder="Amount (whole ELD)" />
     <button onclick="mint()">Mint</button>
 
     <h3>Send ELD</h3>
-    <input id="sendAddress" placeholder="Recipient Address" />
-    <input id="sendAmount" placeholder="Amount (whole ELD)" />
-    <button onclick="send()">Send</button>
+    <input type="text" id="sendTo" placeholder="Recipient Address" />
+    <input type="number" id="sendAmount" placeholder="Amount (whole ELD)" />
+    <button onclick="sendELD()">Send</button>
 
     <h3>Swap ELD for ETH</h3>
-    <input id="swapAmount" placeholder="Amount of ELD" />
-    <button onclick="swap()">Swap for ETH</button>
+    <input type="number" id="swapAmount" placeholder="Amount of ELD to swap" />
+    <button onclick="swapELD()">Swap</button>
   </div>
 
   <script>
     const contractAddress = "0xce25e5AC641283fBC5ce6b317c196AD676f1f28E";
     const contractABI = [
       {
-        "inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],
+        "inputs": [{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],
         "name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],
         "stateMutability":"nonpayable","type":"function"
       },
       {
-        "inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],
+        "inputs": [{"internalType":"uint256","name":"amount","type":"uint256"}],
         "name":"swapELDForETH","outputs":[],"stateMutability":"nonpayable","type":"function"
       },
       {
-        "inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],
+        "inputs": [{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],
         "name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],
         "stateMutability":"nonpayable","type":"function"
       },
       {
-        "inputs":[{"internalType":"address","name":"owner","type":"address"}],
+        "inputs": [{"internalType":"address","name":"account","type":"address"}],
         "name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],
         "stateMutability":"view","type":"function"
       },
       {
-        "inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],
-        "name":"mint","outputs":[],"stateMutability":"nonpayable","type":"function"
+        "inputs": [],
+        "name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],
+        "stateMutability":"view","type":"function"
       }
     ];
 
     let provider, signer, contract;
 
     async function connectWallet() {
-      try {
-        if (!window.ethereum) throw new Error("Install MetaMask");
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        signer = provider.getSigner();
-        contract = new ethers.Contract(contractAddress, contractABI, signer);
-
-        const address = await signer.getAddress();
-        document.getElementById("wallet").innerText = address;
-        loadBalance();
-      } catch (err) {
-        console.error(err);
-        alert("Failed to connect wallet.");
+      if (typeof window.ethereum === "undefined") {
+        alert("MetaMask is not installed!");
+        return;
       }
+
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      const address = await signer.getAddress();
+      document.getElementById("wallet").innerText = address;
+
+      contract = new ethers.Contract(contractAddress, contractABI, signer);
+      loadBalances();
     }
 
-    async function loadBalance() {
-      const address = await signer.getAddress();
-      const balance = await contract.balanceOf(address);
-      document.getElementById("dusdBalance").innerText = ethers.utils.formatEther(balance) + " ELD";
+    async function loadBalances() {
+      try {
+        const address = await signer.getAddress();
+        const eldBal = await contract.balanceOf(address);
+        const ethBal = await provider.getBalance(address);
+        document.getElementById("eldBalance").innerText = ethers.utils.formatUnits(eldBal, 18) + " ELD";
+        document.getElementById("ethBalance").innerText = ethers.utils.formatEther(ethBal) + " ETH";
+      } catch (err) {
+        console.error("Error loading balances:", err);
+      }
     }
 
     async function mint() {
       try {
-        const to = document.getElementById("mintAddress").value;
-        const amount = ethers.utils.parseEther(document.getElementById("mintAmount").value);
-        const tx = await contract.mint(to, amount);
-        await tx.wait();
-        alert("Mint complete!");
-        loadBalance();
-      } catch (err) {
-        console.error(err);
-        alert("Mint failed.");
-      }
-    }
+        const owner = await contract.owner();
+        const user = await signer.getAddress();
+        if (owner.toLowerCase() !== user.toLowerCase()) {
+          return alert("Only owner can mint tokens.");
+        }
 
-    async function send() {
-      try {
-        const to = document.getElementById("sendAddress").value;
-        const amount = ethers.utils.parseEther(document.getElementById("sendAmount").value);
+        const to = document.getElementById("mintTo").value;
+        const amount = ethers.utils.parseUnits(document.getElementById("mintAmount").value, 18);
         const tx = await contract.transfer(to, amount);
         await tx.wait();
-        alert("Transfer complete!");
-        loadBalance();
+        alert("Minted successfully.");
+        loadBalances();
       } catch (err) {
-        console.error(err);
-        alert("Send failed.");
+        console.error("Mint failed:", err);
+        alert("Mint failed. Check console.");
       }
     }
 
-    async function swap() {
+    async function sendELD() {
       try {
-        const amount = ethers.utils.parseEther(document.getElementById("swapAmount").value);
+        const to = document.getElementById("sendTo").value;
+        const amount = ethers.utils.parseUnits(document.getElementById("sendAmount").value, 18);
+        const tx = await contract.transfer(to, amount);
+        await tx.wait();
+        alert("Sent successfully.");
+        loadBalances();
+      } catch (err) {
+        console.error("Send failed:", err);
+        alert("Send failed. Check console.");
+      }
+    }
+
+    async function swapELD() {
+      try {
+        const amount = ethers.utils.parseUnits(document.getElementById("swapAmount").value, 18);
+        const approveTx = await contract.approve(contractAddress, amount);
+        await approveTx.wait();
+
         const tx = await contract.swapELDForETH(amount);
         await tx.wait();
-        alert("Swap complete!");
-        loadBalance();
+
+        alert("Swap complete.");
+        loadBalances();
       } catch (err) {
-        console.error(err);
-        alert("Swap failed.");
+        console.error("Swap failed:", err);
+        alert("Swap failed. Check console.");
       }
     }
   </script>
 </body>
 </html>
+
